@@ -1,0 +1,66 @@
+/home/prithiviraj/.local/lib/python3.8/site-packages/albumentations/__init__.py:13: UserWarning: A new version of Albumentations is available: 2.0.8 (you have 1.4.18). Upgrade using: pip install -U albumentations. To disable automatic update checks, set the environment variable NO_ALBUMENTATIONS_UPDATE to 1.
+  check_for_updates()
+/home/prithiviraj/.local/lib/python3.8/site-packages/torch/cuda/__init__.py:141: UserWarning: CUDA initialization: The NVIDIA driver on your system is too old (found version 11060). Please update your GPU driver by downloading and installing a new version from the URL: http://www.nvidia.com/Download/index.aspx Alternatively, go to: https://pytorch.org to install a PyTorch version that has been compiled with your version of the CUDA driver. (Triggered internally at ../c10/cuda/CUDAFunctions.cpp:108.)
+  return torch._C._cuda_getDeviceCount() > 0
+2025-10-15 01:06:19,666 - services.detection_service - INFO - Face model loaded: models/yolov8n-face.pt
+2025-10-15 01:06:19,844 - services.detection_service - INFO - Human model loaded: models/yolov8n.pt
+/home/prithiviraj/.local/lib/python3.8/site-packages/onnxruntime/capi/onnxruntime_inference_collection.py:69: UserWarning: Specified provider 'CUDAExecutionProvider' is not in available provider names.Available providers: 'AzureExecutionProvider, CPUExecutionProvider'
+  warnings.warn(
+2025-10-15 01:06:24,970 - services.face_processing_service - INFO - InsightFace initialized successfully
+2025-10-15 01:06:24,973 - services.tracking_service - INFO - FaceTrackingService initialized
+[32m2025-10-15 01:06:24.979[0m | [1mINFO    [0m | [36mboxmot.utils.torch_utils[0m:[36mselect_device[0m:[36m52[0m - [1mYolo Tracking v10.0.77 🚀 Python-3.8.10 torch-2.2.2+cu121CPU[0m
+[32m2025-10-15 01:06:25.263[0m | [32m[1mSUCCESS [0m | [36mboxmot.appearance.reid_model_factory[0m:[36mload_pretrained_weights[0m:[36m183[0m - [32m[1mLoaded pretrained weights from models/osnet_x0_25_msmt17.pt[0m
+2025-10-15 01:06:25,316 - services.strongsort_tracking_service - INFO - StrongSORT tracker initialized with ReID model: models/osnet_x0_25_msmt17.pt
+2025-10-15 01:06:25,329 - services.strongsort_tracking_service - INFO - StrongSORT tracking service initialized with enhanced ID stability
+2025-10-15 01:06:25,343 - services.database_service - INFO - Database tables created/verified
+2025-10-15 01:06:25,344 - services.database_service - INFO - Database connection established
+2025-10-15 01:06:29,725 - services.insightface_recognition_service - INFO - InsightFace initialized successfully
+2025-10-15 01:06:29,760 - services.insightface_recognition_service - INFO - Loaded 12 reference embeddings
+2025-10-15 01:06:29,760 - services.insightface_recognition_service - INFO - InsightFace recognition service initialized
+2025-10-15 01:06:29,761 - services.video_processing_service - INFO - Video processing data output mode: csv
+2025-10-15 01:06:29,769 - services.video_processing_service - INFO - CSV writing enabled - using CSV for data output
+2025-10-15 01:06:30,216 - services.detection_service - INFO - Face model loaded: models/yolov8n-face.pt
+2025-10-15 01:06:30,395 - services.detection_service - INFO - Human model loaded: models/yolov8n.pt
+2025-10-15 01:06:40,049 - services.face_processing_service - INFO - InsightFace initialized successfully
+2025-10-15 01:06:40,092 - services.database_service - INFO - Database tables created/verified
+2025-10-15 01:06:40,093 - services.database_service - INFO - Database connection established
+2025-10-15 01:06:40,094 - core_ai_service - INFO - Core AI Service initialized successfully
+2025-10-15 01:06:42,819 - kafka_service - ERROR - Failed to initialize Kafka producer: NoBrokersAvailable
+2025-10-15 01:06:44,825 - kafka_service - ERROR - Failed to initialize Kafka consumer: NoBrokersAvailable
+2025-10-15 01:06:44,919 - services.tracking_service - INFO - Tracking service reset
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+find model: /home/prithiviraj/.insightface/models/buffalo_l/1k3d68.onnx landmark_3d_68 ['None', 3, 192, 192] 0.0 1.0
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+find model: /home/prithiviraj/.insightface/models/buffalo_l/2d106det.onnx landmark_2d_106 ['None', 3, 192, 192] 0.0 1.0
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+find model: /home/prithiviraj/.insightface/models/buffalo_l/det_10g.onnx detection [1, 3, '?', '?'] 127.5 128.0
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+find model: /home/prithiviraj/.insightface/models/buffalo_l/genderage.onnx genderage ['None', 3, 96, 96] 0.0 1.0
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+find model: /home/prithiviraj/.insightface/models/buffalo_l/w600k_r50.onnx recognition ['None', 3, 112, 112] 127.5 127.5
+set det-size: (640, 640)
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+find model: /home/prithiviraj/.insightface/models/buffalo_l/1k3d68.onnx landmark_3d_68 ['None', 3, 192, 192] 0.0 1.0
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+find model: /home/prithiviraj/.insightface/models/buffalo_l/2d106det.onnx landmark_2d_106 ['None', 3, 192, 192] 0.0 1.0
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+find model: /home/prithiviraj/.insightface/models/buffalo_l/det_10g.onnx detection [1, 3, '?', '?'] 127.5 128.0
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+find model: /home/prithiviraj/.insightface/models/buffalo_l/genderage.onnx genderage ['None', 3, 96, 96] 0.0 1.0
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+find model: /home/prithiviraj/.insightface/models/buffalo_l/w600k_r50.onnx recognition ['None', 3, 112, 112] 127.5 127.5
+set det-size: (640, 640)
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+find model: /home/prithiviraj/.insightface/models/buffalo_l/1k3d68.onnx landmark_3d_68 ['None', 3, 192, 192] 0.0 1.0
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+find model: /home/prithiviraj/.insightface/models/buffalo_l/2d106det.onnx landmark_2d_106 ['None', 3, 192, 192] 0.0 1.0
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+find model: /home/prithiviraj/.insightface/models/buffalo_l/det_10g.onnx detection [1, 3, '?', '?'] 127.5 128.0
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+find model: /home/prithiviraj/.insightface/models/buffalo_l/genderage.onnx genderage ['None', 3, 96, 96] 0.0 1.0
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+find model: /home/prithiviraj/.insightface/models/buffalo_l/w600k_r50.onnx recognition ['None', 3, 112, 112] 127.5 127.5
+set det-size: (640, 640)
+✅ Kafka service initialized successfully!
+Processing video (people tracking): /home/prithiviraj/Vision_AI/AI_Layer/input/videos/school_stream_1.mp4
+

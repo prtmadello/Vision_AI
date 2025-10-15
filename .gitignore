@@ -1,0 +1,9 @@
+.venv/
+venv/
+node_modules/
+models/
+input/
+output/
+logs/
+temp/
+__pycache__/

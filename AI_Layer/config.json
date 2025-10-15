@@ -1,0 +1,188 @@
+{
+  "detection": {
+    "input_size": 640,
+    "use_gpu": true,
+    "detection_mode": "both",
+    "face_model_path": "models/yolov8n-face.pt",
+    "human_model_path": "models/yolov8n.pt",
+    "face_confidence_threshold": 0.2,
+    "face_iou_threshold": 0.45,
+    "face_max_detections": 100,
+    "human_confidence_threshold": 0.5,
+    "human_iou_threshold": 0.45,
+    "human_max_detections": 100,
+    "human_classes": [0],
+    "supported_image_formats": [".jpg", ".jpeg", ".png", ".bmp", ".tiff"],
+    "supported_video_formats": [".mp4", ".avi", ".mov", ".mkv", ".wmv"],
+    "enable_batch_processing": true,
+    "save_annotated_images": true,
+    "save_annotated_video": true,
+    "save_csv": true,
+    "frame_skip": 5,
+    "max_frames": 500,
+    "video_fps": 30,
+    "video_codec": "mp4v"
+  },
+  "face_processing": {
+    "crop_padding": 0.3,
+    "min_face_size": 10,
+    "max_face_size": 1000,
+    "alignment_enabled": true,
+    "save_crops": true,
+    "crop_quality": 95
+  },
+  "vectorization": {
+    "model_name": "buffalo_l",
+    "normalize_vectors": true,
+    "vector_dimension": 512,
+    "matching_threshold": 0.5,
+    "max_vectors_per_person": 10,
+    "min_face_size": 10,
+    "use_landmark_alignment": true,
+    "embedding_dimension": 512
+  },
+  "tracking": {
+    "max_disappeared": 10,
+    "max_distance": 0.8,
+    "min_hits": 1,
+    "max_age": 100,
+    "embedding_threshold": 0.5,
+    "iou_threshold": 0.1,
+    "motion_weight": 0.05,
+    "embedding_weight": 0.95,
+    "max_consecutive_misses": 15,
+        "persistent_reid": {
+            "enabled": true,
+            "similarity_threshold": 0.3,
+            "max_age": 1000,
+            "embeddings_json_path": "data/person_embeddings.json",
+            "person_details_json_path": "data/person_details.json"
+        },
+        "multiprocessing": {
+            "enabled": true,
+            "max_workers": 4
+        }
+  },
+  "strongsort_tracking": {
+    "enabled": true,
+    "reid_model_path": "models/osnet_x0_25_msmt17.pt",
+    "device": "cpu",
+    "max_dist": 0.3,
+    "max_iou_dist": 0.7,
+    "max_age": 150,
+    "n_init": 3,
+    "nn_budget": 100,
+    "mc_lambda": 0.995,
+    "ema_alpha": 0.9,
+    "fp16": false,
+    "per_class": false,
+    "track_max_age": 150,
+    "max_history": 100,
+    "embedding_smoothing": {
+      "enabled": true,
+      "window_size": 5,
+      "min_embeddings": 2
+    },
+    "detection_stabilization": {
+      "enabled": true,
+      "smoothing_factor": 0.7,
+      "min_confidence": 0.3
+    },
+    "track_reference": {
+      "enabled": true,
+      "max_history_frames": 100,
+      "spatial_consistency_threshold": 0.7,
+      "motion_consistency_threshold": 0.6,
+      "embedding_consistency_threshold": 0.5,
+      "min_track_age_for_stability": 10
+    },
+    "track_id_reuse": {
+      "enabled": true,
+      "similarity_threshold": 0.7,
+      "max_age": 1000
+    }
+  },
+  "storage": {
+    "database_enabled": true,
+    "file_storage_enabled": true,
+    "database_host": "localhost",
+    "database_port": 5432,
+    "database_name": "madello",
+    "database_user": "postgres",
+    "database_password": "1nn0vent3s",
+    "database_sslmode": "prefer",
+    "storage_path": "../storage",
+    "backup_enabled": true
+  },
+  "paths": {
+    "input_path": "input",
+    "output_path": "output",
+    "face_crops_path": "output/face_crops",
+    "vectors_path": "output/vectors",
+    "logs_path": "../logs",
+    "temp_path": "temp"
+  },
+  "video": {
+    "frame_skip": 5,
+    "max_frames": null,
+    "video_codec": "mp4v",
+    "fps": 30,
+    "show_progress": true
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "file_enabled": true,
+    "console_enabled": true,
+    "max_file_size": 10485760,
+    "backup_count": 5
+  },
+  "face_recognition": {
+    "enabled": true,
+    "recognition_threshold": 0.15,
+    "embeddings_path": "face_embeddings.json",
+    "min_face_size": 120,
+    "max_faces_per_frame": 3,
+    "recognition_interval": 5,
+    "name_persistence": {
+      "enabled": true,
+      "confidence_threshold": 0.5,
+      "persistence_frames": 20,
+      "improvement_threshold": 0.1
+    }
+  },
+  "box_colors": {
+    "face_known": [0, 255, 0],
+    "face_unknown": [0, 0, 255],
+    "human_known": [255, 0, 0],
+    "human_unknown": [0, 255, 255],
+    "track_confirmed": [0, 255, 0],
+    "track_tentative": [0, 255, 255]
+  },
+  "data_output": {
+    "mode": "kafka",
+    "csv_path": "output/face_stream.csv",
+    "kafka_topic": "paarvai_vision",
+    "kafka_bootstrap_servers": ["localhost:9092"]
+  },
+  "video_processing": {
+    "frame_skip": 5,
+    "max_frames": null,
+    "fps": 30,
+    "video_codec": "mp4v",
+    "show_progress": true,
+    "save_annotated_video": true,
+    "multiprocessing": {
+      "enabled": true,
+      "max_workers": 4
+    }
+  },
+  "batch_processing": {
+    "input_folder": "input/faces",
+    "similarity_threshold": 0.75,
+    "skip_existing": true,
+    "save_face_crops": false,
+    "crop_quality": 95,
+    "supported_formats": [".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif"]
+  }
+}

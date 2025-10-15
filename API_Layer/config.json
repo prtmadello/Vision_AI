@@ -1,0 +1,65 @@
+{
+  "api": {
+    "host": "0.0.0.0",
+    "port": 8000,
+    "debug": false,
+    "title": "Paarvai Vision AI API",
+    "version": "1.0.0",
+    "description": "AI-powered face detection and recognition API"
+  },
+  "kafka": {
+    "enabled": true,
+    "bootstrap_servers": ["localhost:9092"],
+    "topic": "paarvai_vision",
+    "people_tracking_topic": "people_tracking",
+    "person_recognition_topic": "person_recognition",
+    "security_alert_topic": "security_alert",
+    "group_id": "paarvai_api_consumer",
+    "auto_offset_reset": "latest",
+    "enable_auto_commit": true,
+    "session_timeout_ms": 30000,
+    "request_timeout_ms": 40000
+  },
+  "data_stream": {
+    "source": "kafka",
+    "csv_path": "../AI_Layer/output/face_stream.csv",
+    "poll_interval": 0.1,
+    "batch_size": 100,
+    "alert_threshold": 5,
+    "inactivity_threshold": 5.0,
+    "polygon_points": [],
+    "line_crossing_enabled": true,
+    "entry_line_y": 300,
+    "exit_line_y": 500,
+    "recognition_enabled": true
+  },
+  "monitoring": {
+    "alert_threshold": 5,
+    "inactivity_threshold": 5.0,
+    "polygon_points": [[21, 476], [845, 473], [842, 210], [223, 230]],
+    "enable_alerts": true,
+    "enable_counting": true
+  },
+  "endpoints": {
+    "process_video": "/api/v1/process-video",
+    "person_counts": "/api/v1/person-counts",
+    "face_stream": "/api/v1/face-stream",
+    "analyze_csv": "/api/v1/analyze-csv",
+    "health": "/api/v1/health",
+    "stats": "/api/v1/stats"
+  },
+  "ai_layer": {
+    "config_path": "../AI_Layer/config.json",
+    "services_path": "../AI_Layer/services",
+    "utils_path": "../AI_Layer/utils",
+    "storage_path": "../AI_Layer/output"
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "file_enabled": true,
+    "console_enabled": true,
+    "max_file_size": 10485760,
+    "backup_count": 5
+  }
+}
