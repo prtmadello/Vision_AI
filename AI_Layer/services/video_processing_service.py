@@ -10,8 +10,6 @@ import time
 from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 from datetime import datetime
-from multiprocessing import Pool, cpu_count
-from functools import partial
 from utils.logger import setup_logger
 from utils.image_processor import ImageProcessor
 from services.strongsort_tracking_service import StrongSORTTrackingService
@@ -39,19 +37,11 @@ class VideoProcessingService:
         # Output settings
         self.save_annotated_video = config.get('save_annotated_video', True)
         
-        # Multiprocessing settings
-        self.use_multiprocessing = config.get('multiprocessing', {}).get('enabled', True)
-        self.max_workers = config.get('multiprocessing', {}).get('max_workers', min(4, cpu_count()))
-        self.logger.info(f"Video processing multiprocessing enabled: {self.use_multiprocessing} (workers: {self.max_workers})")
-        
         # Initialize StrongSORT if enabled
         strongsort_config = config.get('strongsort_tracking', {})
         if strongsort_config.get('enabled', False):
-            self.logger.info(f"Initializing StrongSORT with config: {strongsort_config}")
             self.strongsort_service = StrongSORTTrackingService(strongsort_config)
-            self.logger.info("StrongSORT service initialized successfully")
         else:
-            self.logger.info("StrongSORT is disabled in configuration")
             self.strongsort_service = None
         # Data output configuration
         data_output_config = config.get('data_output', {})
@@ -146,7 +136,7 @@ class VideoProcessingService:
                 )
                 
                 # Apply tracking
-                tracked_faces = tracking_service.update(face_detections, frame)
+                tracked_faces = tracking_service.update(face_detections)
                 
                 # Recognize faces if reference embeddings available
                 recognitions = []
@@ -335,11 +325,9 @@ class VideoProcessingService:
                 
                 # Apply tracking (prefer StrongSORT if available)
                 if self.strongsort_service is not None:
-                    self.logger.debug(f"Using StrongSORT for tracking {len(human_detections)} detections")
                     tracked_humans = self.strongsort_service.update(human_detections, frame)
                 else:
-                    self.logger.debug(f"Using fallback tracking service for {len(human_detections)} detections")
-                    tracked_humans = tracking_service.update(human_detections, frame)
+                    tracked_humans = tracking_service.update(human_detections)
                 
                 # Face recognition (only when good features available)
                 face_recognitions = {}
@@ -389,34 +377,18 @@ class VideoProcessingService:
                     if isinstance(track_id, np.integer):
                         track_id = int(track_id)
                     
-                    # Get display_id from tracked_humans if available (for consistent UI display)
-                    display_id = 'N/A'
-                    if i < len(tracked_humans):
-                        display_id = tracked_humans[i].get('display_id', tracked_humans[i].get('persistent_id', 'N/A'))
-                        if isinstance(display_id, np.integer):
-                            display_id = int(display_id)
-                    
-                    # Get persistent_id for internal tracking
-                    persistent_id = 'N/A'
-                    if i < len(tracked_humans):
-                        persistent_id = tracked_humans[i].get('persistent_id', 'N/A')
-                        if isinstance(persistent_id, np.integer):
-                            persistent_id = int(persistent_id)
-                    
                     # Get person name and status using persistent cache
                     person_name = 'Human'
                     person_status = 'normal'
-                    person_label = 'customer'  # Default to customer
                     match_confidence = 0.0
                     
                     # First, try to get persistent name from cache (if enabled)
-                    if (self.name_persistence_enabled and display_id != 'N/A' and 
-                        isinstance(display_id, (int, np.integer))):
-                        cached_name, cached_status, cached_label = self._get_track_name(int(display_id), frame_count)
+                    if (self.name_persistence_enabled and track_id != 'N/A' and 
+                        isinstance(track_id, (int, np.integer))):
+                        cached_name, cached_status = self._get_track_name(int(track_id), frame_count)
                         if cached_name:
                             person_name = cached_name
                             person_status = cached_status
-                            person_label = cached_label
                     
                     # Update cache with new recognition results if available
                     # Use the detection index to get face recognition results
@@ -425,30 +397,24 @@ class VideoProcessingService:
                         new_name = recognition_data['person_name']
                         new_confidence = recognition_data.get('confidence', 0.0)
                         new_status = recognition_data.get('status', 'normal')
-                        new_label = recognition_data.get('person_label', 'customer')
                         match_confidence = new_confidence
                         
                         # Update cache with new recognition (if persistence enabled)
-                        if (self.name_persistence_enabled and display_id != 'N/A' and 
-                            isinstance(display_id, (int, np.integer))):
-                            self._update_track_name_cache(int(display_id), new_name, new_confidence, frame_count, new_label)
+                        if (self.name_persistence_enabled and track_id != 'N/A' and 
+                            isinstance(track_id, (int, np.integer))):
+                            self._update_track_name_cache(int(track_id), new_name, new_confidence, frame_count)
                             # Use the new recognition if confidence is high enough
                             if new_confidence > self.name_confidence_threshold:
                                 person_name = new_name
                                 person_status = new_status
-                                person_label = new_label
                     
                     detection_data = {
                         'frame_id': int(frame_count),
                         'detection_id': int(i),
-                        'track_id': display_id,  # Use display_id for consistent UI display
-                        'strongsort_track_id': track_id,  # Keep original StrongSORT track_id for reference
-                        'persistent_id': persistent_id,  # Internal persistent_id for re-identification
-                        'display_id': display_id,  # Explicit display_id field for UI
-                        'person_id': (f"human_{display_id}" if display_id != 'N/A' else 'Unknown'),
+                        'track_id': track_id,
+                        'person_id': (f"human_{track_id}" if track_id != 'N/A' else 'Unknown'),
                         'person_name': person_name,
                         'status': person_status,
-                        'label': person_label,  # Employee or Customer label
                         'match_confidence': float(match_confidence),
                         'bbox_x1': float(detection['bbox'][0]),
                         'bbox_y1': float(detection['bbox'][1]),
@@ -533,10 +499,9 @@ class VideoProcessingService:
         stream_path.parent.mkdir(parents=True, exist_ok=True)
         # Ensure header exists
         header = [
-            'frame_id', 'detection_id', 'track_id', 'strongsort_track_id', 'persistent_id', 'display_id',
-            'person_id', 'person_name', 'match_confidence', 'status', 'label', 'bbox_x1', 'bbox_y1', 
-            'bbox_x2', 'bbox_y2', 'confidence', 'track_age', 'track_hits', 'track_state', 
-            'timestamp', 'source'
+            'frame_id', 'detection_id', 'track_id', 'person_id', 'person_name',
+            'match_confidence', 'status', 'bbox_x1', 'bbox_y1', 'bbox_x2', 'bbox_y2',
+            'confidence', 'track_age', 'track_hits', 'track_state', 'timestamp', 'source'
         ]
         file_exists = stream_path.exists()
         with open(stream_path, 'a', newline='') as csvfile:
@@ -721,22 +686,17 @@ class VideoProcessingService:
             bbox = detection['bbox']
             confidence = detection['confidence']
             
-            # Use persistent_id if available, otherwise fall back to track_id
-            persistent_id = tracked_humans[i].get('persistent_id', 'N/A') if i < len(tracked_humans) else 'N/A'
             track_id = tracked_humans[i].get('track_id', 'N/A') if i < len(tracked_humans) else 'N/A'
             track_state = tracked_humans[i].get('state', 'Unknown') if i < len(tracked_humans) else 'Unknown'
-            
-            # Use persistent_id for display and caching
-            display_id = persistent_id if persistent_id != 'N/A' else track_id
             
             # Get person name and status using persistent cache
             person_name = ""
             person_status = "normal"
             
             # First, try to get persistent name from cache (if enabled)
-            if (self.name_persistence_enabled and display_id != 'N/A' and 
-                isinstance(display_id, (int, np.integer))):
-                cached_name, cached_status, cached_label = self._get_track_name(int(display_id), 0)  # frame_count not available here
+            if (self.name_persistence_enabled and track_id != 'N/A' and 
+                isinstance(track_id, (int, np.integer))):
+                cached_name, cached_status = self._get_track_name(int(track_id), 0)  # frame_count not available here
                 if cached_name:
                     person_name = f" {cached_name}"
                     person_status = cached_status
@@ -762,9 +722,9 @@ class VideoProcessingService:
             # Create label according to requirements: "ID: 20 Name" or "ID: 20 Name [BLOCKED]"
             if person_name:
                 status_tag = " [BLOCKED]" if person_status == 'blocked' else ""
-                label = f"ID: {display_id} {person_name}{status_tag}"
+                label = f"ID: {track_id} {person_name}{status_tag}"
             else:
-                label = f"ID: {display_id}"
+                label = f"ID: {track_id}"
             
             # Draw bounding box
             x1, y1, x2, y2 = map(int, bbox)
@@ -808,10 +768,9 @@ class VideoProcessingService:
         
         with open(csv_path, 'w', newline='') as csvfile:
             fieldnames = [
-                'frame_id', 'detection_id', 'track_id', 'strongsort_track_id', 'persistent_id', 'display_id',
-                'person_id', 'person_name', 'match_confidence', 'status', 'label', 'bbox_x1', 'bbox_y1', 
-                'bbox_x2', 'bbox_y2', 'confidence', 'track_age', 'track_hits', 'track_state', 
-                'timestamp', 'source'
+                'frame_id', 'detection_id', 'track_id', 'person_id', 'person_name',
+                'match_confidence', 'status', 'bbox_x1', 'bbox_y1', 'bbox_x2', 'bbox_y2',
+                'confidence', 'track_age', 'track_hits', 'track_state', 'timestamp', 'source'
             ]
             
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -820,7 +779,7 @@ class VideoProcessingService:
         
         return str(csv_path)
     
-    def _update_track_name_cache(self, track_id: int, person_name: str, confidence: float, frame_count: int, person_label: str = 'customer') -> None:
+    def _update_track_name_cache(self, track_id: int, person_name: str, confidence: float, frame_count: int) -> None:
         """Update track name cache with persistence logic"""
         if not person_name or person_name == "Unknown":
             return
@@ -831,8 +790,7 @@ class VideoProcessingService:
                 'name': person_name,
                 'confidence': confidence,
                 'frames_seen': 1,
-                'last_seen': frame_count,
-                'label': person_label
+                'last_seen': frame_count
             }
             self.logger.info(f"Track {track_id} assigned name: {person_name} (confidence: {confidence:.3f})")
             return
@@ -845,17 +803,16 @@ class VideoProcessingService:
             cache_entry['confidence'] = confidence
             cache_entry['frames_seen'] += 1
             cache_entry['last_seen'] = frame_count
-            cache_entry['label'] = person_label
             self.logger.info(f"Track {track_id} name updated: {person_name} (confidence: {confidence:.3f})")
         else:
             # Just update the tracking info
             cache_entry['frames_seen'] += 1
             cache_entry['last_seen'] = frame_count
     
-    def _get_track_name(self, track_id: int, frame_count: int) -> Tuple[str, str, str]:
+    def _get_track_name(self, track_id: int, frame_count: int) -> Tuple[str, str]:
         """Get persistent name for track with fallback logic"""
         if track_id not in self.track_name_cache:
-            return "", "normal", "customer"
+            return "", "normal"
         
         cache_entry = self.track_name_cache[track_id]
         
@@ -864,9 +821,9 @@ class VideoProcessingService:
         if frames_since_last_seen > self.name_persistence_frames:
             # Name is too old, remove from cache
             del self.track_name_cache[track_id]
-            return "", "normal", "customer"
+            return "", "normal"
         
-        return cache_entry['name'], "normal", cache_entry.get('label', 'customer')
+        return cache_entry['name'], "normal"  # TODO: Add status tracking
     
     def _cleanup_old_track_names(self, current_track_ids: set, frame_count: int) -> None:
         """Clean up old track names from cache"""

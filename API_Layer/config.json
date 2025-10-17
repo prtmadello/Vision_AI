@@ -61,5 +61,38 @@
     "console_enabled": true,
     "max_file_size": 10485760,
     "backup_count": 5
+  },
+  "sms": {
+    "enabled": true,
+    "twilio_credentials": {
+      "account_sid": "your_account_sid_here",
+      "auth_token": "your_auth_token_here",
+      "sms_from_number": "+1234567890"
+    },
+    "settings": {
+      "retry_attempts": 3,
+      "retry_on_failure": true,
+      "delay_between_alerts": 2
+    },
+    "sms_alerts": [
+      {
+        "name": "server_down",
+        "enabled": true,
+        "message": "🚨 Server Alert: System is down and requires immediate attention!",
+        "to_numbers": ["+1234567890", "+0987654321"]
+      },
+      {
+        "name": "video_quality_alert",
+        "enabled": true,
+        "message": "⚠️ Video Quality Alert: Poor video quality detected in surveillance system!",
+        "to_numbers": ["+1234567890"]
+      },
+      {
+        "name": "security_alert",
+        "enabled": true,
+        "message": "🔒 Security Alert: Suspicious activity detected in monitored area!",
+        "to_numbers": ["+1234567890", "+0987654321"]
+      }
+    ]
   }
 }

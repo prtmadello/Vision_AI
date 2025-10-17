@@ -78,7 +78,7 @@ def main():
             kafka = None
 
     # Video path (absolute)
-    video_path = str((Path(__file__).parent / 'input' / 'videos' / 'tr.avi').resolve())
+    video_path = str((Path(__file__).parent / 'input' / 'videos' / 'sam.mp4').resolve())
     print(f"Processing video (people tracking): {video_path}")
 
     # Process video for human detection and tracking with face recognition

@@ -18,8 +18,8 @@
     "save_annotated_images": true,
     "save_annotated_video": true,
     "save_csv": true,
-    "frame_skip": 5,
-    "max_frames": 500,
+    "frame_skip": 1,
+    "max_frames": null,
     "video_fps": 30,
     "video_codec": "mp4v"
   },
@@ -42,42 +42,31 @@
     "embedding_dimension": 512
   },
   "tracking": {
-    "max_disappeared": 10,
-    "max_distance": 0.8,
-    "min_hits": 1,
-    "max_age": 100,
-    "embedding_threshold": 0.5,
-    "iou_threshold": 0.1,
-    "motion_weight": 0.05,
-    "embedding_weight": 0.95,
-    "max_consecutive_misses": 15,
-        "persistent_reid": {
-            "enabled": true,
-            "similarity_threshold": 0.3,
-            "max_age": 1000,
-            "embeddings_json_path": "data/person_embeddings.json",
-            "person_details_json_path": "data/person_details.json"
-        },
-        "multiprocessing": {
-            "enabled": true,
-            "max_workers": 4
-        }
+    "max_disappeared": 15,
+    "max_distance": 0.5,
+    "min_hits": 5,
+    "max_age": 1,
+    "embedding_threshold": 0.6,
+    "iou_threshold": 0.4,
+    "motion_weight": 0.2,
+    "embedding_weight": 0.8,
+    "max_consecutive_misses": 3
   },
   "strongsort_tracking": {
     "enabled": true,
     "reid_model_path": "models/osnet_x0_25_msmt17.pt",
     "device": "cpu",
-    "max_dist": 0.3,
-    "max_iou_dist": 0.7,
-    "max_age": 150,
-    "n_init": 3,
-    "nn_budget": 100,
+    "max_dist": 0.15,
+    "max_iou_dist": 0.5,
+    "max_age": 30,
+    "n_init": 5,
+    "nn_budget": 50,
     "mc_lambda": 0.995,
     "ema_alpha": 0.9,
     "fp16": false,
     "per_class": false,
-    "track_max_age": 150,
-    "max_history": 100,
+    "track_max_age": 30,
+    "max_history": 50,
     "embedding_smoothing": {
       "enabled": true,
       "window_size": 5,
@@ -90,16 +79,11 @@
     },
     "track_reference": {
       "enabled": true,
-      "max_history_frames": 100,
-      "spatial_consistency_threshold": 0.7,
-      "motion_consistency_threshold": 0.6,
-      "embedding_consistency_threshold": 0.5,
-      "min_track_age_for_stability": 10
-    },
-    "track_id_reuse": {
-      "enabled": true,
-      "similarity_threshold": 0.7,
-      "max_age": 1000
+      "max_history_frames": 50,
+      "spatial_consistency_threshold": 0.8,
+      "motion_consistency_threshold": 0.7,
+      "embedding_consistency_threshold": 0.6,
+      "min_track_age_for_stability": 20
     }
   },
   "storage": {
@@ -123,7 +107,7 @@
     "temp_path": "temp"
   },
   "video": {
-    "frame_skip": 5,
+    "frame_skip": 1,
     "max_frames": null,
     "video_codec": "mp4v",
     "fps": 30,
@@ -164,18 +148,6 @@
     "csv_path": "output/face_stream.csv",
     "kafka_topic": "paarvai_vision",
     "kafka_bootstrap_servers": ["localhost:9092"]
-  },
-  "video_processing": {
-    "frame_skip": 5,
-    "max_frames": null,
-    "fps": 30,
-    "video_codec": "mp4v",
-    "show_progress": true,
-    "save_annotated_video": true,
-    "multiprocessing": {
-      "enabled": true,
-      "max_workers": 4
-    }
   },
   "batch_processing": {
     "input_folder": "input/faces",

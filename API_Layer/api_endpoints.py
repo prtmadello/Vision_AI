@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import sys
+import time
 from pathlib import Path
 from datetime import datetime
 
@@ -19,6 +20,7 @@ from utils.config_loader import APIConfigLoader
 from utils.logger import setup_logger
 from services.kafka_service import KafkaService
 from services.data_stream_service import DataStreamService
+from services.video_quality_service import VideoQualityService
 
 import importlib.util
 
@@ -31,6 +33,7 @@ config = config_loader.config
 # Initialize services
 kafka_service = KafkaService(config_loader.get_kafka_config())
 data_stream_service = DataStreamService(config_loader.get_data_stream_config())
+video_quality_service = VideoQualityService()
 
 # Dynamically load CoreAIService from AI Layer even though the directory has a space
 def _load_core_ai_service():
@@ -206,10 +209,66 @@ class PeopleCrossingResponse(BaseModel):
     status: str
     received_count: Dict[str, Any]
 
+# Video Quality Detection Models
+class VideoQualityRequest(BaseModel):
+    video_path: str
+    max_frames: Optional[int] = None
+    duration_seconds: Optional[int] = None
+    config: Optional[Dict[str, Any]] = None
+
+class VideoQualityResponse(BaseModel):
+    status: str
+    video_path: str
+    video_properties: Optional[Dict[str, Any]] = None
+    summary: Dict[str, Any]
+    frame_analysis: List[Dict[str, Any]]
+    alerts: List[Dict[str, Any]]
+    transformation_stats: Dict[str, Any]
+    error: Optional[str] = None
+
+class VideoStreamQualityRequest(BaseModel):
+    video_source: Optional[int] = 0  # Camera index or video source
+    duration_seconds: Optional[int] = 30
+    config: Optional[Dict[str, Any]] = None
+
+class VideoStreamQualityResponse(BaseModel):
+    status: str
+    video_source: str
+    duration_analyzed: float
+    frames_analyzed: int
+    summary: Dict[str, Any]
+    frame_analysis: List[Dict[str, Any]]
+    alerts: List[Dict[str, Any]]
+    transformation_stats: Dict[str, Any]
+    error: Optional[str] = None
+
+# SMS Alert Models
+class SMSAlertRequest(BaseModel):
+    alert_name: str
+    custom_message: Optional[str] = None
+    to_numbers: Optional[List[str]] = None
+
+class SMSAlertResponse(BaseModel):
+    status: str
+    alert_name: str
+    message: str
+    sent_to: List[str]
+    failed_numbers: List[str]
+    total_sent: int
+    total_failed: int
+    error: Optional[str] = None
+
+class SMSConfigResponse(BaseModel):
+    status: str
+    sms_enabled: bool
+    available_alerts: List[Dict[str, Any]]
+    settings: Dict[str, Any]
+
 # Global state
 app.state.kafka_service = kafka_service
 app.state.data_stream_service = data_stream_service
 app.state.get_ai_service = get_ai_service  # Store the function instead of the service
+app.state.video_quality_service = video_quality_service
 app.state.people_count = 0
 app.state.line_events = []
 app.state.alerts = []
@@ -474,6 +533,12 @@ async def root():
             # Video endpoints
             "videos": "GET /api/v1/videos",
             "video_file": "GET /api/v1/video/{filename}",
+            "video_quality": "POST /api/v1/video-quality",
+            "video_stream_quality": "POST /api/v1/video-stream-quality",
+            
+            # SMS Alert endpoints
+            "sms_alert": "POST /api/v1/sms-alert",
+            "sms_config": "GET /api/v1/sms-config",
             
             # Demo data endpoints
             "demo_locations": "GET /api/v1/demo/locations",
@@ -1161,6 +1226,194 @@ async def get_demo_stats():
         }
         
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Video Quality Detection Endpoints
+@app.post("/api/v1/video-quality", response_model=VideoQualityResponse)
+async def analyze_video_quality(request: VideoQualityRequest):
+    """Analyze video quality for a video file"""
+    try:
+        logger.info(f"Video quality analysis requested for: {request.video_path}")
+        
+        # Get video quality service
+        video_quality_service = app.state.video_quality_service
+        
+        # Update configuration if provided
+        if request.config:
+            video_quality_service.config.update(request.config)
+        
+        # Analyze video file
+        result = video_quality_service.analyze_video_file(
+            video_path=request.video_path,
+            max_frames=request.max_frames
+        )
+        
+        return VideoQualityResponse(**result)
+        
+    except Exception as e:
+        logger.error(f"Error in video quality analysis: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/video-stream-quality", response_model=VideoStreamQualityResponse)
+async def analyze_video_stream_quality(request: VideoStreamQualityRequest):
+    """Analyze video quality for a live video stream"""
+    try:
+        logger.info(f"Video stream quality analysis requested for source: {request.video_source}")
+        
+        # Get video quality service
+        video_quality_service = app.state.video_quality_service
+        
+        # Update configuration if provided
+        if request.config:
+            video_quality_service.config.update(request.config)
+        
+        # Analyze video stream
+        result = video_quality_service.analyze_video_stream(
+            video_source=request.video_source,
+            duration_seconds=request.duration_seconds
+        )
+        
+        return VideoStreamQualityResponse(**result)
+        
+    except Exception as e:
+        logger.error(f"Error in video stream quality analysis: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/video-quality/config")
+async def get_video_quality_config():
+    """Get current video quality detection configuration"""
+    try:
+        video_quality_service = app.state.video_quality_service
+        return {
+            "status": "success",
+            "config": video_quality_service.config
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/video-quality/config")
+async def update_video_quality_config(config: Dict[str, Any]):
+    """Update video quality detection configuration"""
+    try:
+        video_quality_service = app.state.video_quality_service
+        video_quality_service.config.update(config)
+        
+        logger.info("Video quality configuration updated")
+        
+        return {
+            "status": "success",
+            "message": "Configuration updated successfully",
+            "config": video_quality_service.config
+        }
+    except Exception as e:
+        logger.error(f"Error updating video quality config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# SMS Alert Endpoints
+@app.post("/api/v1/sms-alert", response_model=SMSAlertResponse)
+async def send_sms_alert(request: SMSAlertRequest):
+    """Send SMS alert using Twilio"""
+    try:
+        # Check if SMS is enabled
+        sms_config = config_loader.get('sms', {})
+        if not sms_config.get('enabled', False):
+            raise HTTPException(status_code=400, detail="SMS alerts are disabled")
+        
+        # Get SMS configuration
+        twilio_creds = sms_config.get('twilio_credentials', {})
+        settings = sms_config.get('settings', {})
+        alerts = sms_config.get('sms_alerts', [])
+        
+        # Validate Twilio credentials
+        if not all([twilio_creds.get('account_sid'), twilio_creds.get('auth_token'), twilio_creds.get('sms_from_number')]):
+            raise HTTPException(status_code=500, detail="Twilio credentials not properly configured")
+        
+        # Find alert by name
+        alert = next((a for a in alerts if a["name"] == request.alert_name and a["enabled"]), None)
+        if not alert:
+            raise HTTPException(status_code=404, detail=f"Alert '{request.alert_name}' not found or is disabled")
+        
+        # Use custom message if provided, otherwise use default
+        message = request.custom_message if request.custom_message else alert["message"]
+        
+        # Use custom numbers if provided, otherwise use default
+        to_numbers = request.to_numbers if request.to_numbers else alert["to_numbers"]
+        
+        # Import Twilio client
+        try:
+            from twilio.rest import Client
+        except ImportError:
+            raise HTTPException(status_code=500, detail="Twilio library not installed. Install with: pip install twilio")
+        
+        # Initialize Twilio client
+        client = Client(twilio_creds["account_sid"], twilio_creds["auth_token"])
+        from_number = twilio_creds["sms_from_number"]
+        
+        # Send SMS to multiple numbers
+        sent_to = []
+        failed_numbers = []
+        
+        for number in to_numbers:
+            success = False
+            attempts = 0
+            retry_attempts = settings.get("retry_attempts", 3)
+            retry_on_failure = settings.get("retry_on_failure", True)
+            delay_between_alerts = settings.get("delay_between_alerts", 2)
+            
+            while not success and attempts < retry_attempts:
+                try:
+                    message_obj = client.messages.create(
+                        body=message,
+                        from_=from_number,
+                        to=number
+                    )
+                    logger.info(f"✅ SMS sent to {number} | SID: {message_obj.sid}")
+                    sent_to.append(number)
+                    success = True
+                except Exception as e:
+                    attempts += 1
+                    logger.error(f"❌ Failed to send SMS to {number}: {e}")
+                    if retry_on_failure and attempts < retry_attempts:
+                        logger.info(f"🔁 Retrying ({attempts}/{retry_attempts})...")
+                        time.sleep(delay_between_alerts)
+                    else:
+                        logger.error("🚫 Giving up after multiple failures.")
+                        failed_numbers.append(number)
+                        break
+        
+        logger.info("📨 All SMS alerts processed.")
+        
+        return SMSAlertResponse(
+            status="success",
+            alert_name=request.alert_name,
+            message=message,
+            sent_to=sent_to,
+            failed_numbers=failed_numbers,
+            total_sent=len(sent_to),
+            total_failed=len(failed_numbers)
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error sending SMS alert: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/sms-config", response_model=SMSConfigResponse)
+async def get_sms_config():
+    """Get SMS configuration and available alerts"""
+    try:
+        sms_config = config_loader.get('sms', {})
+        
+        return SMSConfigResponse(
+            status="success",
+            sms_enabled=sms_config.get('enabled', False),
+            available_alerts=sms_config.get('sms_alerts', []),
+            settings=sms_config.get('settings', {})
+        )
+        
+    except Exception as e:
+        logger.error(f"Error getting SMS config: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

@@ -1,0 +1,68 @@
+{
+  "thresholds": {
+    "BLUR_THRESHOLD": 100.0,
+    "OBSTRUCTION_THRESHOLD": 0.3,
+    "MIN_BRIGHTNESS": 20,
+    "MAX_BRIGHTNESS": 235,
+    "MIN_FPS": 15,
+    "FRAME_DROP_TIMEOUT": 2.0,
+    "CONSECUTIVE_FRAMES_THRESHOLD": 3
+  },
+  "data_transformation": {
+    "temporal_smoothing": {
+      "enabled": true,
+      "window_size": 5
+    },
+    "adaptive_thresholds": {
+      "enabled": true,
+      "learning_rate": 0.1
+    },
+    "false_positive_filters": {
+      "ignore_motion_blur": true,
+      "motion_blur_threshold": 200.0,
+      "ignore_brief_obstructions": true,
+      "brief_duration_seconds": 1.0
+    }
+  },
+  "alert_pipeline": {
+    "enabled": true,
+    "alert_cooldown": 5.0,
+    "max_queue_size": 100,
+    "export_on_stop": true,
+    "export_filename": "video_quality_alerts.json",
+    "integrations": {
+      "console": {
+        "enabled": true
+      },
+      "file": {
+        "enabled": false,
+        "log_file": "video_quality_alerts.log"
+      }
+    }
+  },
+  "metrics_logging": {
+    "enabled": true,
+    "log_file": "video_quality_metrics.csv",
+    "log_interval": 10,
+    "export_format": "csv"
+  },
+  "analysis": {
+    "enable_blur_detection": true,
+    "enable_brightness_detection": true,
+    "enable_obstruction_detection": true,
+    "enable_fps_monitoring": true,
+    "analyze_interval": 0.2
+  },
+  "display": {
+    "show_metrics_overlay": true,
+    "show_window": false,
+    "window_name": "Video Quality Monitor",
+    "save_screenshots": false,
+    "screenshot_dir": "screenshots"
+  },
+  "video": {
+    "source": 0,
+    "default_max_frames": 1000,
+    "default_duration_seconds": 30
+  }
+}

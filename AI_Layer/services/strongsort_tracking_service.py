@@ -314,20 +314,7 @@ class StrongSORTTrackingService:
         # NEW: Enhanced track reference system to prevent ID switches
         self.track_reference_system = TrackReferenceSystem(config.get('track_reference', {}))
         
-        # NEW: Persistent track ID system for better ReID
-        self.persistent_track_ids = {}  # embedding_hash -> track_id
-        self.track_id_reuse_enabled = config.get('track_id_reuse', {}).get('enabled', True)
-        self.track_id_similarity_threshold = config.get('track_id_reuse', {}).get('similarity_threshold', 0.7)
-        self.max_track_id_age = config.get('track_id_reuse', {}).get('max_age', 1000)  # frames
-        
-        # Enhanced persistent person re-identification system
-        self.person_embeddings = {}  # track_id -> list of embeddings
-        self.person_appearance_features = {}  # track_id -> appearance features
-        self.lost_tracks = {}  # track_id -> {'last_seen': frame, 'embedding': np.array, 'features': dict}
-        self.next_persistent_id = 1
-        self.persistent_id_mapping = {}  # StrongSORT track_id -> persistent_id
-        
-        self.logger.info("StrongSORT tracking service initialized with enhanced ID stability and persistent track IDs")
+        self.logger.info("StrongSORT tracking service initialized with enhanced ID stability")
     
     def _initialize_tracker(self) -> None:
         """Initialize StrongSORT tracker with OSNet ReID."""
@@ -409,11 +396,6 @@ class StrongSORTTrackingService:
             
             # Update track reference system
             self._update_track_references(tracked_objects, embeddings)
-            
-            # NEW: Apply persistent person re-identification
-            self.logger.debug(f"Applying persistent ReID to {len(tracked_objects)} tracked objects")
-            tracked_objects = self._apply_persistent_reid(tracked_objects, embeddings)
-            self.logger.debug(f"After persistent ReID: {len(tracked_objects)} tracked objects")
             
             return tracked_objects
             
@@ -862,140 +844,3 @@ class StrongSORTTrackingService:
         """Get center point of bounding box."""
         x1, y1, x2, y2 = bbox
         return [(x1 + x2) / 2, (y1 + y2) / 2]
-    
-    def _apply_persistent_reid(self, tracked_objects: List[Dict[str, Any]], 
-                              embeddings: List[Optional[np.ndarray]]) -> List[Dict[str, Any]]:
-        """Apply persistent person re-identification to maintain consistent track IDs."""
-        if not self.track_id_reuse_enabled:
-            return tracked_objects
-        
-        current_track_ids = set()
-        updated_objects = []
-        
-        for i, track in enumerate(tracked_objects):
-            track_id = track.get('track_id')
-            current_track_ids.add(track_id)
-            
-            # Get embedding for this track
-            embedding = embeddings[i] if embeddings and i < len(embeddings) else None
-            
-            # Check if this is a new track that might be a reappearing person
-            if track_id not in self.persistent_id_mapping:
-                # Try to find a matching lost track
-                persistent_id = self._find_matching_lost_track(embedding, track.get('bbox', []))
-                
-                if persistent_id is not None:
-                    # Reuse existing persistent ID
-                    self.persistent_id_mapping[track_id] = persistent_id
-                    track['persistent_id'] = persistent_id
-                    self.logger.info(f"Re-identified person: StrongSORT track {track_id} -> Persistent ID {persistent_id}")
-                else:
-                    # Assign new persistent ID
-                    persistent_id = self.next_persistent_id
-                    self.next_persistent_id += 1
-                    self.persistent_id_mapping[track_id] = persistent_id
-                    track['persistent_id'] = persistent_id
-                    self.logger.info(f"New person detected: StrongSORT track {track_id} -> Persistent ID {persistent_id}")
-            else:
-                # Use existing persistent ID
-                track['persistent_id'] = self.persistent_id_mapping[track_id]
-            
-            # Store embedding and features for future matching
-            if embedding is not None:
-                if track_id not in self.person_embeddings:
-                    self.person_embeddings[track_id] = []
-                self.person_embeddings[track_id].append(embedding)
-                
-                # Keep only recent embeddings (last 10)
-                if len(self.person_embeddings[track_id]) > 10:
-                    self.person_embeddings[track_id] = self.person_embeddings[track_id][-10:]
-            
-            updated_objects.append(track)
-        
-        # Update lost tracks
-        self._update_lost_tracks(current_track_ids)
-        
-        return updated_objects
-    
-    def _find_matching_lost_track(self, embedding: Optional[np.ndarray], bbox: List[float]) -> Optional[int]:
-        """Find a matching lost track based on embedding similarity."""
-        if embedding is None or not self.lost_tracks:
-            return None
-        
-        best_match_id = None
-        best_similarity = 0.0
-        
-        for lost_track_id, lost_data in self.lost_tracks.items():
-            lost_embedding = lost_data.get('embedding')
-            if lost_embedding is None:
-                continue
-            
-            # Calculate embedding similarity
-            similarity = self._calculate_embedding_similarity(embedding, lost_embedding)
-            
-            # Also check spatial proximity if available
-            spatial_score = 1.0
-            if bbox and 'bbox' in lost_data:
-                # Calculate distance between bbox centers
-                current_center = self._get_bbox_center(bbox)
-                lost_center = self._get_bbox_center(lost_data['bbox'])
-                distance = np.sqrt((current_center[0] - lost_center[0])**2 + (current_center[1] - lost_center[1])**2)
-                spatial_score = max(0.0, 1.0 - (distance / 200.0))  # Normalize by 200 pixels
-            
-            # Combined score
-            combined_score = similarity * 0.8 + spatial_score * 0.2
-            
-            if combined_score > best_similarity and combined_score > self.track_id_similarity_threshold:
-                best_similarity = combined_score
-                best_match_id = lost_track_id
-        
-        return best_match_id
-    
-    def _calculate_embedding_similarity(self, embedding1: np.ndarray, embedding2: np.ndarray) -> float:
-        """Calculate cosine similarity between two embeddings."""
-        try:
-            # Normalize embeddings
-            norm1 = np.linalg.norm(embedding1)
-            norm2 = np.linalg.norm(embedding2)
-            
-            if norm1 == 0 or norm2 == 0:
-                return 0.0
-            
-            # Calculate cosine similarity
-            similarity = np.dot(embedding1, embedding2) / (norm1 * norm2)
-            return max(0.0, similarity)  # Ensure non-negative
-        except Exception as e:
-            self.logger.debug(f"Error calculating embedding similarity: {e}")
-            return 0.0
-    
-    def _update_lost_tracks(self, current_track_ids: set) -> None:
-        """Update lost tracks and clean up old ones."""
-        # Find tracks that are no longer active
-        lost_track_ids = set(self.persistent_id_mapping.keys()) - current_track_ids
-        
-        for track_id in lost_track_ids:
-            if track_id not in self.lost_tracks:
-                # Store information about the lost track
-                embedding = None
-                if track_id in self.person_embeddings and self.person_embeddings[track_id]:
-                    embedding = self.person_embeddings[track_id][-1]  # Use most recent embedding
-                
-                self.lost_tracks[track_id] = {
-                    'last_seen': self.frame_count,
-                    'embedding': embedding,
-                    'persistent_id': self.persistent_id_mapping[track_id]
-                }
-        
-        # Clean up old lost tracks
-        tracks_to_remove = []
-        for track_id, lost_data in self.lost_tracks.items():
-            frames_since_lost = self.frame_count - lost_data['last_seen']
-            if frames_since_lost > self.max_track_id_age:
-                tracks_to_remove.append(track_id)
-        
-        for track_id in tracks_to_remove:
-            del self.lost_tracks[track_id]
-            if track_id in self.persistent_id_mapping:
-                del self.persistent_id_mapping[track_id]
-            if track_id in self.person_embeddings:
-                del self.person_embeddings[track_id]
